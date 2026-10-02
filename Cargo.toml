@@ -1,0 +1,19 @@
+[package]
+name = "nostos"
+version = "0.1.0"
+edition = "2021"
+description = "Slack の #todo チャンネルの未完了タスクを毎朝リマインドする Cloudflare Worker"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+worker = "0.6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true

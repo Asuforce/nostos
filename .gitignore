@@ -1,0 +1,10 @@
+/target
+/build
+/node_modules
+/.wrangler
+
+# secrets
+.dev.vars
+wrangler.toml
+
+.claude/

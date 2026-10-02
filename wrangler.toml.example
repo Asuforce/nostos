@@ -1,0 +1,14 @@
+name = "nostos"
+main = "build/worker/shim.mjs"
+compatibility_date = "2025-01-01"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+# UTC 0:00 = JST 9:00
+[triggers]
+crons = ["0 0 * * *"]
+
+# 秘密情報はここに書かない。
+# 本番: wrangler secret put SLACK_BOT_TOKEN / SLACK_CHANNEL_ID
+# ローカル: .dev.vars.example を .dev.vars にコピーして編集
