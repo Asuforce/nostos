@@ -1,0 +1,18 @@
+display_information:
+  name: Nostos
+  description: 未完了の Todo を毎朝リマインドします
+features:
+  bot_user:
+    display_name: Nostos
+    always_online: false
+oauth_config:
+  scopes:
+    bot:
+      - channels:history
+      - chat:write
+      # プライベートチャンネルで使う場合は次も追加する。
+      # - groups:history
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

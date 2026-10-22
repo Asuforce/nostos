@@ -1,2 +1,4 @@
 SLACK_BOT_TOKEN=xoxb-your-token
 SLACK_CHANNEL_ID=C0000000000
+# 任意。完了とみなすリアクション名（コロンなし）。省略すると done。
+# DONE_REACTION=done
