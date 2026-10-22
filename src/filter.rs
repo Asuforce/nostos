@@ -1,6 +1,8 @@
 use crate::slack::Message;
 
 pub fn unfinished_tasks<'a>(messages: &'a [Message], done_reaction: &str) -> Vec<&'a Message> {
+    // ":done:" と書かれても動くよう、前後のコロンは取り除く。
+    let done_reaction = done_reaction.trim_matches(':');
     messages
         .iter()
         .filter(|m| is_unfinished(m, done_reaction))
@@ -37,7 +39,11 @@ pub fn format_thread_replies(tasks: &[&Message], link: impl Fn(&Message) -> Stri
 // リンクの表示名。mrkdwn の制御文字をエスケープしないと <url|label> が壊れる。
 fn label(message: &Message) -> String {
     let text = message.text.as_deref().unwrap_or_default();
-    let first_line = text.lines().next().unwrap_or_default();
+    let first_line = text
+        .lines()
+        .map(str::trim)
+        .find(|l| !l.is_empty())
+        .unwrap_or("(本文なし)");
     let truncated: String = first_line.chars().take(LABEL_LIMIT).collect();
     truncated
         .replace('&', "&amp;")
@@ -106,6 +112,14 @@ mod tests {
     }
 
     #[test]
+    fn labels_with_first_non_empty_line() {
+        let messages = vec![msg(r#"{"ts": "1", "text": "\n  \nbuy milk\nmore"}"#)];
+        let tasks = unfinished_tasks(&messages, "done");
+        let replies = format_thread_replies(&tasks, |_| "https://x".to_string());
+        assert_eq!(replies, vec!["・<https://x|buy milk>"]);
+    }
+
+    #[test]
     fn splits_replies_when_too_long() {
         let messages: Vec<Message> = (0..100)
             .map(|i| msg(&format!(r#"{{"ts": "{i}", "text": "task {i}"}}"#)))
@@ -129,6 +143,14 @@ mod tests {
         )];
         assert!(unfinished_tasks(&messages, "white_check_mark").is_empty());
         assert_eq!(unfinished_tasks(&messages, "done").len(), 1);
+    }
+
+    #[test]
+    fn accepts_done_reaction_with_colons() {
+        let messages = vec![msg(
+            r#"{"ts": "1", "text": "x", "reactions": [{"name": "done", "count": 1}]}"#,
+        )];
+        assert!(unfinished_tasks(&messages, ":done:").is_empty());
     }
 
     #[test]
