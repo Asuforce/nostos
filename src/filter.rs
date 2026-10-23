@@ -3,10 +3,31 @@ use crate::slack::Message;
 pub fn unfinished_tasks<'a>(messages: &'a [Message], done_reaction: &str) -> Vec<&'a Message> {
     // ":done:" と書かれても動くよう、前後のコロンは取り除く。
     let done_reaction = done_reaction.trim_matches(':');
-    messages
+    let mut tasks: Vec<&Message> = messages
         .iter()
         .filter(|m| is_unfinished(m, done_reaction))
-        .collect()
+        .collect();
+    // sort_by_key は安定ソートなので、同じ priority の中では元の順序が保たれる。
+    tasks.sort_by_key(|m| std::cmp::Reverse(priority(m)));
+    tasks
+}
+
+// :one: 〜 :five:（またはカスタム絵文字の :1: 〜 :5:）を priority 1〜5 として読む。
+// 複数付いていたら最大値、なければ 0。
+pub fn priority(message: &Message) -> u8 {
+    message
+        .reactions
+        .iter()
+        .filter_map(|r| match r.name.as_str() {
+            "one" | "1" => Some(1),
+            "two" | "2" => Some(2),
+            "three" | "3" => Some(3),
+            "four" | "4" => Some(4),
+            "five" | "5" => Some(5),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0)
 }
 
 pub fn format_header(count: usize) -> String {
@@ -151,6 +172,88 @@ mod tests {
             r#"{"ts": "1", "text": "x", "reactions": [{"name": "done", "count": 1}]}"#,
         )];
         assert!(unfinished_tasks(&messages, ":done:").is_empty());
+    }
+
+    fn with_reactions(ts: &str, names: &[&str]) -> Message {
+        let reactions: Vec<String> = names
+            .iter()
+            .map(|n| format!(r#"{{"name": "{n}", "count": 1}}"#))
+            .collect();
+        msg(&format!(
+            r#"{{"ts": "{ts}", "text": "t{ts}", "reactions": [{}]}}"#,
+            reactions.join(",")
+        ))
+    }
+
+    #[test]
+    fn priority_is_zero_without_number_reaction() {
+        assert_eq!(priority(&with_reactions("1", &[])), 0);
+        assert_eq!(priority(&with_reactions("1", &["eyes"])), 0);
+    }
+
+    #[test]
+    fn priority_reads_number_emoji_names() {
+        for (name, expected) in [
+            ("one", 1),
+            ("two", 2),
+            ("three", 3),
+            ("four", 4),
+            ("five", 5),
+        ] {
+            assert_eq!(priority(&with_reactions("1", &[name])), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn priority_reads_custom_digit_names() {
+        for n in 1..=5u8 {
+            assert_eq!(priority(&with_reactions("1", &[&n.to_string()])), n);
+        }
+    }
+
+    #[test]
+    fn priority_ignores_out_of_range_numbers() {
+        assert_eq!(
+            priority(&with_reactions("1", &["0", "6", "zero", "six"])),
+            0
+        );
+    }
+
+    #[test]
+    fn priority_takes_highest_when_multiple() {
+        assert_eq!(priority(&with_reactions("1", &["two", "eyes", "four"])), 4);
+    }
+
+    #[test]
+    fn sorts_by_priority_descending() {
+        let messages = vec![
+            with_reactions("1", &[]),
+            with_reactions("2", &["two"]),
+            with_reactions("3", &["five"]),
+            with_reactions("4", &["one"]),
+        ];
+        let tasks = unfinished_tasks(&messages, "done");
+        let order: Vec<&str> = tasks.iter().map(|m| m.ts.as_str()).collect();
+        assert_eq!(order, vec!["3", "2", "4", "1"]);
+    }
+
+    #[test]
+    fn keeps_original_order_within_same_priority() {
+        let messages = vec![
+            with_reactions("1", &["three"]),
+            with_reactions("2", &[]),
+            with_reactions("3", &["three"]),
+            with_reactions("4", &[]),
+        ];
+        let tasks = unfinished_tasks(&messages, "done");
+        let order: Vec<&str> = tasks.iter().map(|m| m.ts.as_str()).collect();
+        assert_eq!(order, vec!["1", "3", "2", "4"]);
+    }
+
+    #[test]
+    fn done_wins_over_priority() {
+        let messages = vec![with_reactions("1", &["five", "done"])];
+        assert!(unfinished_tasks(&messages, "done").is_empty());
     }
 
     #[test]
