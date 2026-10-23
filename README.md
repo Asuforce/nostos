@@ -93,6 +93,8 @@ npm run deploy
 
 Wasm のビルドは `wrangler.toml` の `[build]` が `worker-build --release` を呼ぶので、手動では実行しません。
 
+`main` への push では、GitHub Actions の `deploy` ジョブが同じ手順で自動デプロイします。リポジトリの Secrets に `CLOUDFLARE_API_TOKEN`（Account の Workers Scripts: Edit だけを付けたトークン）と `CLOUDFLARE_ACCOUNT_ID` を登録してください。
+
 ## 設定
 
 | 名前 | 内容 | 設定場所 |
