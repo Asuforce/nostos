@@ -42,7 +42,7 @@ pub fn format_thread_replies(tasks: &[&Message], link: impl Fn(&Message) -> Stri
     let mut chunks = Vec::new();
     let mut current = String::new();
     for task in tasks {
-        let line = format!("・<{}|{}>", link(task), label(task));
+        let line = format!("・{}<{}|{}>", priority_mark(task), link(task), label(task));
         if !current.is_empty() && current.len() + line.len() + 1 > CHUNK_LIMIT {
             chunks.push(std::mem::take(&mut current));
         }
@@ -55,6 +55,14 @@ pub fn format_thread_replies(tasks: &[&Message], link: impl Fn(&Message) -> Stri
         chunks.push(current);
     }
     chunks
+}
+
+// priority のある todo だけ行頭に【n】を付ける。
+fn priority_mark(message: &Message) -> String {
+    match priority(message) {
+        0 => String::new(),
+        n => format!("【{n}】"),
+    }
 }
 
 // リンクの表示名。mrkdwn の制御文字をエスケープしないと <url|label> が壊れる。
@@ -183,6 +191,17 @@ mod tests {
             r#"{{"ts": "{ts}", "text": "t{ts}", "reactions": [{}]}}"#,
             reactions.join(",")
         ))
+    }
+
+    #[test]
+    fn marks_priority_in_reply_line() {
+        let messages = vec![with_reactions("1", &["three"]), with_reactions("2", &[])];
+        let tasks = unfinished_tasks(&messages, "done");
+        let replies = format_thread_replies(&tasks, |m| format!("https://x/p{}", m.ts));
+        assert_eq!(
+            replies,
+            vec!["・【3】<https://x/p1|t1>\n・<https://x/p2|t2>"]
+        );
     }
 
     #[test]
