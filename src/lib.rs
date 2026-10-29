@@ -1,5 +1,6 @@
 use worker::*;
 
+pub mod config;
 pub mod filter;
 pub mod slack;
 
@@ -16,7 +17,12 @@ async fn scheduled(_event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
 
 async fn run(env: &Env) -> Result<()> {
     let token = env.secret("SLACK_BOT_TOKEN")?.to_string();
-    let channel = env.secret("SLACK_CHANNEL_ID")?.to_string();
+    let channels = config::parse_channel_ids(&env.secret("SLACK_CHANNEL_ID")?.to_string());
+    if channels.is_empty() {
+        return Err(Error::RustError(
+            "SLACK_CHANNEL_ID does not contain a channel ID".to_string(),
+        ));
+    }
 
     // リアクション名は秘密情報ではないので、未設定なら既定値を使う。
     let done_reaction = env
@@ -27,20 +33,45 @@ async fn run(env: &Env) -> Result<()> {
     let now_secs = Date::now().as_millis() / 1000;
     let oldest = now_secs.saturating_sub(LOOKBACK_DAYS * 24 * 60 * 60);
 
-    let messages = slack::fetch_history(&token, &channel, oldest).await?;
-    let tasks = filter::unfinished_tasks(&messages, &done_reaction);
+    // ワークスペース URL は全チャンネルで共通なので、最初に必要になった時点で
+    // 1 回だけ取得して使い回す。
+    let mut workspace: Option<String> = None;
+    for channel in &channels {
+        // 1 チャンネルの失敗（未招待・削除済みなど）で残りを止めない。
+        if let Err(e) = run_channel(&token, channel, &done_reaction, oldest, &mut workspace).await {
+            console_error!("nostos: channel {channel}: {e}");
+        }
+    }
+    Ok(())
+}
+
+async fn run_channel(
+    token: &str,
+    channel: &str,
+    done_reaction: &str,
+    oldest: u64,
+    workspace: &mut Option<String>,
+) -> Result<()> {
+    let messages = slack::fetch_history(token, channel, oldest).await?;
+    let tasks = filter::unfinished_tasks(&messages, done_reaction);
     if tasks.is_empty() {
         return Ok(());
     }
 
-    let workspace = slack::workspace_url(&token).await?;
+    if workspace.is_none() {
+        *workspace = Some(slack::workspace_url(token).await?);
+    }
+    let Some(workspace_url) = workspace.as_deref() else {
+        return Err(Error::RustError("workspace URL is not set".to_string()));
+    };
+
     let parent_ts =
-        slack::post_message(&token, &channel, &filter::format_header(tasks.len()), None).await?;
+        slack::post_message(token, channel, &filter::format_header(tasks.len()), None).await?;
 
     let replies =
-        filter::format_thread_replies(&tasks, |m| slack::permalink(&workspace, &channel, &m.ts));
+        filter::format_thread_replies(&tasks, |m| slack::permalink(workspace_url, channel, &m.ts));
     for reply in replies {
-        slack::post_message(&token, &channel, &reply, Some(&parent_ts)).await?;
+        slack::post_message(token, channel, &reply, Some(&parent_ts)).await?;
     }
     Ok(())
 }

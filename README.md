@@ -1,6 +1,6 @@
 # Nostos
 
-Slack の Todo 用チャンネルで、完了リアクションが付いていないユーザー発言を毎朝集めて、同じチャンネルに再通知する Cloudflare Worker です。Rust を Wasm にコンパイルして動かします。
+Slack の Todo 用チャンネルで、完了リアクションが付いていないユーザー発言を毎朝集めて、同じチャンネルに再通知する Cloudflare Worker です。Rust を Wasm にコンパイルして動かします。対象チャンネルは複数指定できます。
 
 Todo が増えると未完了のものが上に流れて埋もれます。Nostos は毎朝決まった時刻に、親メッセージを 1 件投稿し、そのスレッドに該当ポストへのリンクを貼ります。同梱の `wrangler.toml.example` は UTC 0:00 (JST 9:00) に設定してあります。
 
@@ -29,6 +29,8 @@ flowchart LR
 
 `bot_id` と `subtype` が付いた投稿は除外します。これがないと、Nostos 自身の投稿を次の朝に Todo として拾ってしまいます。
 
+複数チャンネルを指定した場合はチャンネルごとに同じ処理を行い、それぞれのチャンネルにそのチャンネルの分だけを投稿します。1 つのチャンネルで失敗しても（Bot 未招待、チャンネル削除など）、残りのチャンネルの処理は続行し、失敗はログに残ります。
+
 ## 優先度
 
 `:one:` 〜 `:five:` のリアクション（カスタム絵文字の `:1:` 〜 `:5:` でも可）を優先度 1〜5 として扱い、優先度が高いものからスレッドに並べます。複数付いていれば最大値を使い、なければ 0 です。優先度のある行には、行頭に `【3】` のように数字が付きます。同じ優先度の中では、チャンネルでの新しい順のままです。
@@ -53,8 +55,8 @@ npm install
    - `chat:write` (リマインドを投稿する)
    - プライベートチャンネルで使う場合は `groups:history` も追加します。
 3. ワークスペースにインストールし、Bot User OAuth Token (`xoxb-...`) を控えます。
-4. Todo 用に使うチャンネルで `/invite @<App 名>` を実行し、Bot を招待します。招待しないと履歴を読めません。
-5. そのチャンネルの ID を控えます。チャンネル名を右クリックして詳細を開くと、末尾に ID があります。
+4. Todo 用に使うチャンネルで `/invite @<App 名>` を実行し、Bot を招待します。招待しないと履歴を読めません。複数チャンネルで使う場合は、チャンネルごとに招待します。
+5. そのチャンネルの ID を控えます。チャンネル名を右クリックして詳細を開くと、末尾に ID があります。複数ある場合は ID をすべて控えます。
 
 ## セットアップ
 
@@ -65,7 +67,7 @@ cp wrangler.toml.example wrangler.toml
 cp .dev.vars.example .dev.vars
 ```
 
-`.dev.vars` に `SLACK_BOT_TOKEN` と `SLACK_CHANNEL_ID` を書きます。トークンやチャンネル ID をコードやコミットに入れないでください。
+`.dev.vars` に `SLACK_BOT_TOKEN` と `SLACK_CHANNEL_ID` を書きます。複数チャンネルを対象にする場合は、`SLACK_CHANNEL_ID` に ID をカンマ区切りで並べます（例: `C0000000000,C1111111111`）。トークンやチャンネル ID をコードやコミットに入れないでください。
 
 ## ローカルで動かす
 
@@ -79,7 +81,7 @@ Cron は自動では走りません。`wrangler dev --test-scheduled` で起動�
 curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"
 ```
 
-実行すると、`SLACK_CHANNEL_ID` のチャンネルに実際に投稿されます。試すときは専用のテストチャンネルを使うと安全です。
+実行すると、`SLACK_CHANNEL_ID` のチャンネルに実際に投稿されます。複数指定している場合は全チャンネルに投稿されるので、試すときは専用のテストチャンネルを使うと安全です。
 
 ## デプロイ
 
@@ -100,7 +102,7 @@ Wasm のビルドは `wrangler.toml` の `[build]` が `worker-build --release` 
 | 名前 | 内容 | 設定場所 |
 | --- | --- | --- |
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token | `.dev.vars` / `wrangler secret` |
-| `SLACK_CHANNEL_ID` | 読み取りと投稿の対象にするチャンネルの ID | `.dev.vars` / `wrangler secret` |
+| `SLACK_CHANNEL_ID` | 読み取りと投稿の対象にするチャンネルの ID。カンマ区切りで複数指定可（重複は無視） | `.dev.vars` / `wrangler secret` |
 | `DONE_REACTION` | 完了とみなすリアクション名（コロンなし）。省略すると `done` | `.dev.vars` / `wrangler secret` または `wrangler.toml` の `[vars]` |
 | `crons` | 実行時刻 (UTC) | `wrangler.toml` の `[triggers]` |
 
@@ -113,11 +115,12 @@ cargo test
 cargo clippy --target wasm32-unknown-unknown -- -D warnings
 ```
 
-フィルタリングとメッセージ整形は `src/filter.rs` の純粋関数で、`cargo test` で検証します。Slack との通信は `src/slack.rs`、Cron のエントリポイントは `src/lib.rs` にあります。
+フィルタリングとメッセージ整形は `src/filter.rs` の純粋関数で、`cargo test` で検証します。チャンネル ID の解析も純粋関数として `src/config.rs` にあります。Slack との通信は `src/slack.rs`、Cron のエントリポイントは `src/lib.rs` にあります。
 
 ```text
 src/
 ├── lib.rs      scheduled イベントと全体の組み立て
+├── config.rs   SLACK_CHANNEL_ID の解析（カンマ区切りで複数チャンネル）
 ├── slack.rs    API レスポンスの型、history 取得、投稿
 └── filter.rs   未完了判定とリマインド文の整形
 ```
