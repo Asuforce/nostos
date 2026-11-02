@@ -1,0 +1,56 @@
+{
+  ".github/workflows/ci.yml": {
+    "mtime": 1792752379.0373273,
+    "seen": 1793236960.300038,
+    "ast_hash": "dfb237033510cd921cb7671f49163327",
+    "semantic_hash": "dfb237033510cd921cb7671f49163327"
+  },
+  "Cargo.toml": {
+    "mtime": 1790924346.3988278,
+    "seen": 1793236960.3000443,
+    "ast_hash": "31d029c18f075b2611a90902cfea9622",
+    "semantic_hash": "31d029c18f075b2611a90902cfea9622"
+  },
+  "package.json": {
+    "mtime": 1790924346.5168314,
+    "seen": 1793236960.3000479,
+    "ast_hash": "ad1f83d20404c9f5915878d4ff9f47ef",
+    "semantic_hash": "ad1f83d20404c9f5915878d4ff9f47ef"
+  },
+  "slack-manifest.yml": {
+    "mtime": 1792713286.6708586,
+    "seen": 1793236960.3000507,
+    "ast_hash": "db197494160a93006e55b09daec675be",
+    "semantic_hash": "db197494160a93006e55b09daec675be"
+  },
+  "src/filter.rs": {
+    "mtime": 1792815937.445499,
+    "seen": 1793236960.3000534,
+    "ast_hash": "cd21e3d54c3b29be0b52065211beca03",
+    "semantic_hash": "cd21e3d54c3b29be0b52065211beca03"
+  },
+  "src/lib.rs": {
+    "mtime": 1792713286.6708586,
+    "seen": 1793236960.3000557,
+    "ast_hash": "85793dfa0a5e4e316fee189c5a051197",
+    "semantic_hash": "85793dfa0a5e4e316fee189c5a051197"
+  },
+  "src/slack.rs": {
+    "mtime": 1792713286.6708586,
+    "seen": 1793236960.3000588,
+    "ast_hash": "4841fb6f7051a8ee3911e07038cfc615",
+    "semantic_hash": "4841fb6f7051a8ee3911e07038cfc615"
+  },
+  "README.md": {
+    "mtime": 1792815937.4444988,
+    "seen": 1793236960.3000612,
+    "ast_hash": "346b4dbfe8ceacf7ed4032098a559e85",
+    "semantic_hash": "346b4dbfe8ceacf7ed4032098a559e85"
+  },
+  "docs/nostos.md": {
+    "mtime": 1792713286.6708586,
+    "seen": 1793236960.3000638,
+    "ast_hash": "f9db2c96420a59852a2023db8fb72dab",
+    "semantic_hash": "f9db2c96420a59852a2023db8fb72dab"
+  }
+}
