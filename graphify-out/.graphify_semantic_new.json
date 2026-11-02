@@ -1,0 +1,558 @@
+{
+  "nodes": [
+    {
+      "id": "readme_nostos",
+      "label": "Nostos",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L1-L5",
+      "status": "READMEで現行動作として記載",
+      "rationale": "チャンネルで埋もれる未完了Todoを毎朝再通知する"
+    },
+    {
+      "id": "readme_cloudflare_workers",
+      "label": "Cloudflare Workers",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L3"
+    },
+    {
+      "id": "readme_rust_wasm",
+      "label": "Rust と WebAssembly",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L3"
+    },
+    {
+      "id": "readme_cron_trigger",
+      "label": "Cron Trigger JST 9:00",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L5-L14"
+    },
+    {
+      "id": "readme_conversations_history",
+      "label": "conversations.history 過去90日の親メッセージ",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L11-L12",
+      "rationale": "Slack無料版の履歴制限に合わせて過去90日を対象にする"
+    },
+    {
+      "id": "readme_incomplete_filter",
+      "label": "未完了Todoの抽出",
+      "file_type": "rationale",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L12-L14,L30",
+      "rationale": "完了リアクション付き、bot_id付き、subtype付きの投稿を除外し、自己通知の再収集を防ぐ"
+    },
+    {
+      "id": "readme_thread_reminder",
+      "label": "親通知とスレッドのTodoリンク",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L13-L23",
+      "status": "未完了が1件以上ある場合のみ実行"
+    },
+    {
+      "id": "readme_chat_postmessage",
+      "label": "chat.postMessage",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L13"
+    },
+    {
+      "id": "readme_reaction_priority",
+      "label": "リアクションによる優先度1〜5",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L32-L34",
+      "status": "READMEで現行動作として記載",
+      "rationale": "複数の数値リアクションでは最大値を使い、同順位では新しい順を保つ"
+    },
+    {
+      "id": "readme_slack_permissions",
+      "label": "Slack App の権限と招待",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L48-L57"
+    },
+    {
+      "id": "readme_secret_config",
+      "label": "秘密情報と環境設定",
+      "file_type": "rationale",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L59-L68,L98-L105",
+      "rationale": "BotトークンとチャンネルIDをコードやコミットに入れず、ローカルは.dev.vars、本番はCloudflare Secretsで管理する"
+    },
+    {
+      "id": "readme_done_reaction",
+      "label": "DONE_REACTION 設定",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L104",
+      "status": "READMEで設定可能と記載",
+      "rationale": "省略時はdoneを使う"
+    },
+    {
+      "id": "readme_github_actions",
+      "label": "GitHub Actions 自動デプロイ",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L94-L96"
+    },
+    {
+      "id": "readme_lib_module",
+      "label": "src/lib.rs scheduledイベントと全体の組み立て",
+      "file_type": "document",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L122"
+    },
+    {
+      "id": "readme_slack_module",
+      "label": "src/slack.rs Slack通信とレスポンス型",
+      "file_type": "document",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L122"
+    },
+    {
+      "id": "readme_filter_module",
+      "label": "src/filter.rs 純粋関数と単体テスト",
+      "file_type": "document",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L111-L122"
+    },
+    {
+      "id": "readme_worker_fetch",
+      "label": "worker::Fetch",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L125",
+      "rationale": "Wasm環境でHTTP通信を行うため"
+    },
+    {
+      "id": "docs_nostos_requirements",
+      "label": "Nostos Phase 1 要件",
+      "file_type": "document",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L20-L48",
+      "status": "要件・処理フローの記録"
+    },
+    {
+      "id": "docs_nostos_auth_test",
+      "label": "auth.test によるリンク生成",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L47",
+      "rationale": "ワークスペースURLとチャンネルIDとtsから該当ポストへのリンクを組み立てる"
+    },
+    {
+      "id": "docs_nostos_thread_ts",
+      "label": "親投稿のtsをthread_tsに利用",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L48"
+    },
+    {
+      "id": "docs_nostos_date_priority",
+      "label": "Phase 2 構想 日時解析による優先順位",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L50-L52",
+      "status": "将来構想"
+    },
+    {
+      "id": "docs_nostos_custom_done_reaction",
+      "label": "Phase 2 記録 完了スタンプ名の設定化",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L53",
+      "status": "設計文書では将来構想として記載。READMEでは設定可能と記載されている"
+    },
+    {
+      "id": "docs_nostos_oss",
+      "label": "OSS とセルフホスト",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L9,L55-L69",
+      "rationale": "同じ悩みを持つ利用者が自分のSlack環境で使える汎用ツールを公開する"
+    },
+    {
+      "id": "docs_nostos_pair_programming",
+      "label": "Rust学習の段階的ペアプログラミング",
+      "file_type": "rationale",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L71-L101",
+      "rationale": "RustとOSS開発の学習のため、骨組み提示、概念解説、ユーザー向けTODOを含めて各ステップを対話で進める"
+    },
+    {
+      "id": "docs_nostos_serde",
+      "label": "serde によるSlackレスポンスのデシリアライズ",
+      "file_type": "concept",
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L88-L89",
+      "status": "実装手順のStep 2"
+    }
+  ],
+  "edges": [
+    {
+      "source": "readme_nostos",
+      "target": "readme_cloudflare_workers",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_nostos",
+      "target": "readme_rust_wasm",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_cron_trigger",
+      "target": "readme_conversations_history",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L11",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_conversations_history",
+      "target": "readme_incomplete_filter",
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L12",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_incomplete_filter",
+      "target": "readme_thread_reminder",
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L13-L14",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_thread_reminder",
+      "target": "readme_chat_postmessage",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_reaction_priority",
+      "target": "readme_thread_reminder",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L34",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_slack_permissions",
+      "target": "readme_conversations_history",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L52-L56",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_slack_permissions",
+      "target": "readme_chat_postmessage",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L53",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_secret_config",
+      "target": "readme_done_reaction",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_done_reaction",
+      "target": "readme_incomplete_filter",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L12,L104",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_github_actions",
+      "target": "readme_cloudflare_workers",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L84-L96",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_github_actions",
+      "target": "readme_secret_config",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L86-L96",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_lib_module",
+      "target": "readme_cron_trigger",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L120",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_slack_module",
+      "target": "readme_conversations_history",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L121",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_slack_module",
+      "target": "readme_chat_postmessage",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L121",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_slack_module",
+      "target": "readme_worker_fetch",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L125",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_rust_wasm",
+      "target": "readme_worker_fetch",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L125",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_filter_module",
+      "target": "readme_incomplete_filter",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L122",
+      "weight": 1.0
+    },
+    {
+      "source": "readme_filter_module",
+      "target": "readme_thread_reminder",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/README.md",
+      "source_location": "L116-L122",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_requirements",
+      "target": "readme_nostos",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L1-L7,L20-L48",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_auth_test",
+      "target": "readme_thread_reminder",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_thread_ts",
+      "target": "readme_thread_reminder",
+      "relation": "implements",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_requirements",
+      "target": "docs_nostos_auth_test",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L47",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_requirements",
+      "target": "docs_nostos_thread_ts",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_date_priority",
+      "target": "readme_reaction_priority",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.75,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L52",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_custom_done_reaction",
+      "target": "readme_done_reaction",
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L53",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_oss",
+      "target": "readme_secret_config",
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L55-L65",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_oss",
+      "target": "readme_nostos",
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L7-L9",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_pair_programming",
+      "target": "docs_nostos_serde",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L88-L89",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_pair_programming",
+      "target": "readme_filter_module",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L91-L92",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_pair_programming",
+      "target": "readme_worker_fetch",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L94-L95",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_pair_programming",
+      "target": "readme_lib_module",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L97-L98",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_nostos_serde",
+      "target": "readme_slack_module",
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md",
+      "source_location": "L88-L89",
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "id": "docs_nostos_learning_sequence",
+      "label": "Rust学習の実装手順",
+      "nodes": [
+        "docs_nostos_pair_programming",
+        "docs_nostos_serde",
+        "readme_filter_module",
+        "readme_worker_fetch",
+        "readme_lib_module"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

@@ -1,0 +1,2 @@
+/home/sun/dev/src/github.com/Asuforce/nostos/README.md
+/home/sun/dev/src/github.com/Asuforce/nostos/docs/nostos.md

@@ -31,7 +31,7 @@ pub fn priority(message: &Message) -> u8 {
 }
 
 pub fn format_header(count: usize) -> String {
-    format!("おはようございます！未完了のTodoが{count}件あります。スレッドにリンクを貼ります。")
+    format!("Todo: {count}件")
 }
 
 // Slack は 1 メッセージ 4000 文字を超えると切り詰めるので、行単位で分割する。
@@ -122,7 +122,7 @@ mod tests {
     fn formats_header_with_count() {
         assert_eq!(
             format_header(2),
-            "おはようございます！未完了のTodoが2件あります。スレッドにリンクを貼ります。"
+            "Todo: 2件"
         );
     }
 
