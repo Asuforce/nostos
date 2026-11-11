@@ -4,8 +4,6 @@ pub mod config;
 pub mod filter;
 pub mod slack;
 
-// Slack 無料版の閲覧制限に合わせる。
-const LOOKBACK_DAYS: u64 = 90;
 const DEFAULT_DONE_REACTION: &str = "done";
 
 #[event(scheduled)]
@@ -30,15 +28,34 @@ async fn run(env: &Env) -> Result<()> {
         .map(|v| v.to_string())
         .unwrap_or_else(|_| DEFAULT_DONE_REACTION.to_string());
 
+    // 保持日数は秘密情報ではないので、未設定なら既定値（90 日）を使う。
+    // 取得範囲も同じ日数に揃える。保持期間を過ぎた投稿は Slack 側でも見えない。
+    let retention_days = config::parse_retention_days(
+        env.var("RETENTION_DAYS")
+            .map(|v| v.to_string())
+            .ok()
+            .as_deref(),
+    );
+
     let now_secs = Date::now().as_millis() / 1000;
-    let oldest = now_secs.saturating_sub(LOOKBACK_DAYS * 24 * 60 * 60);
+    let oldest = now_secs.saturating_sub(retention_days * 24 * 60 * 60);
 
     // ワークスペース URL は全チャンネルで共通なので、最初に必要になった時点で
     // 1 回だけ取得して使い回す。
     let mut workspace: Option<String> = None;
     for channel in &channels {
         // 1 チャンネルの失敗（未招待・削除済みなど）で残りを止めない。
-        if let Err(e) = run_channel(&token, channel, &done_reaction, oldest, &mut workspace).await {
+        if let Err(e) = run_channel(
+            &token,
+            channel,
+            &done_reaction,
+            oldest,
+            now_secs,
+            retention_days,
+            &mut workspace,
+        )
+        .await
+        {
             console_error!("nostos: channel {channel}: {e}");
         }
     }
@@ -50,6 +67,8 @@ async fn run_channel(
     channel: &str,
     done_reaction: &str,
     oldest: u64,
+    now_secs: u64,
+    retention_days: u64,
     workspace: &mut Option<String>,
 ) -> Result<()> {
     let messages = slack::fetch_history(token, channel, oldest).await?;
@@ -68,8 +87,9 @@ async fn run_channel(
     let parent_ts =
         slack::post_message(token, channel, &filter::format_header(tasks.len()), None).await?;
 
-    let replies =
-        filter::format_thread_replies(&tasks, |m| slack::permalink(workspace_url, channel, &m.ts));
+    let replies = filter::format_thread_replies(&tasks, now_secs, retention_days, |m| {
+        slack::permalink(workspace_url, channel, &m.ts)
+    });
     for reply in replies {
         slack::post_message(token, channel, &reply, Some(&parent_ts)).await?;
     }
