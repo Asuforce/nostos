@@ -56,12 +56,38 @@ pub fn remaining_days(message: &Message, now_secs: u64, retention_days: u64) -> 
     Some(remaining_secs.div_ceil(SECONDS_PER_DAY).min(retention_days))
 }
 
-// 残り日数の表示。0 日は「今日消えます」として目立たせる。
+// JST の暦日番号。JST は UTC+9 で夏時間がないため、オフセットを足して日割りする。
+fn jst_day(secs: u64) -> u64 {
+    (secs + 9 * 60 * 60) / SECONDS_PER_DAY
+}
+
+// 残り日数の表示。
+//
+// 消える日（JST）が今日のものは「（今日まで）」とする。期限ちょうどや
+// 期限超過（残り 0 日）も同じ表示にする。切り上げでは残り 1 日になる投稿でも、
+// 今日中に消えるものは翌朝には取得範囲外になってしまうため、秒単位の残りでは
+// なく暦日で判定するのが最終通知として正確になる。
 fn remaining_mark(message: &Message, now_secs: u64, retention_days: u64) -> String {
-    match remaining_days(message, now_secs, retention_days) {
-        Some(0) => "（今日消えます）".to_string(),
-        Some(days) => format!("（あと{days}日）"),
-        None => String::new(),
+    let Some(days) = remaining_days(message, now_secs, retention_days) else {
+        return String::new();
+    };
+    if days == 0 {
+        return "（今日まで）".to_string();
+    }
+    let Ok(posted_secs) = message
+        .ts
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .parse::<u64>()
+    else {
+        return String::new();
+    };
+    let expiry_secs = posted_secs.saturating_add(retention_days * SECONDS_PER_DAY);
+    if jst_day(expiry_secs) == jst_day(now_secs) {
+        "（今日まで）".to_string()
+    } else {
+        format!("（あと{days}日）")
     }
 }
 
@@ -372,6 +398,26 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1_700_000_000 + 90 * 86_400, 90, |_| {
             "https://x".to_string()
         });
-        assert_eq!(replies, vec!["・<https://x|buy milk>（今日消えます）"]);
+        assert_eq!(replies, vec!["・<https://x|buy milk>（今日まで）"]);
+    }
+
+    #[test]
+    fn marks_as_due_today_when_expiring_later_today_jst() {
+        // now は JST 09:00、期限は同日 18:00 (JST)。秒単位の残りは 9 時間で
+        // 切り上げると 1 日になるが、暦日が今日なので「今日まで」になる。
+        let messages = vec![msg(r#"{"ts": "1692349200.000100", "text": "buy milk"}"#)];
+        let tasks = unfinished_tasks(&messages, "done");
+        let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
+        assert_eq!(replies, vec!["・<https://x|buy milk>（今日まで）"]);
+    }
+
+    #[test]
+    fn marks_one_day_left_when_expiring_tomorrow_jst() {
+        // now は JST 09:00、期限は翌日 08:00 (JST)。残りは 23 時間で切り上げ
+        // 1 日、暦日も翌日なので「あと1日」になる。
+        let messages = vec![msg(r#"{"ts": "1692399600.000100", "text": "buy milk"}"#)];
+        let tasks = unfinished_tasks(&messages, "done");
+        let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
+        assert_eq!(replies, vec!["・<https://x|buy milk>（あと1日）"]);
     }
 }
