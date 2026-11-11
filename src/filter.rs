@@ -38,11 +38,49 @@ pub fn format_header(count: usize) -> String {
 const CHUNK_LIMIT: usize = 3000;
 const LABEL_LIMIT: usize = 40;
 
-pub fn format_thread_replies(tasks: &[&Message], link: impl Fn(&Message) -> String) -> Vec<String> {
+const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
+
+// 投稿が保持期限を過ぎて見えなくなるまでの残り日数。
+//
+// 期限は投稿時刻（ts の秒部分）＋保持日数で、残りは切り上げる。
+// 投稿直後は保持日数そのものになり、期限を過ぎたら 0。
+// 時計のずれで ts が未来でも保持日数を超えないよう丸める。
+// ts が数値として読めない場合は None（表示を付けない）。
+pub fn remaining_days(message: &Message, now_secs: u64, retention_days: u64) -> Option<u64> {
+    let posted_secs: u64 = message.ts.split('.').next()?.parse().ok()?;
+    let expiry_secs = posted_secs.saturating_add(retention_days * SECONDS_PER_DAY);
+    if expiry_secs <= now_secs {
+        return Some(0);
+    }
+    let remaining_secs = expiry_secs - now_secs;
+    Some(remaining_secs.div_ceil(SECONDS_PER_DAY).min(retention_days))
+}
+
+// 残り日数の表示。0 日は「今日消えます」として目立たせる。
+fn remaining_mark(message: &Message, now_secs: u64, retention_days: u64) -> String {
+    match remaining_days(message, now_secs, retention_days) {
+        Some(0) => "（今日消えます）".to_string(),
+        Some(days) => format!("（あと{days}日）"),
+        None => String::new(),
+    }
+}
+
+pub fn format_thread_replies(
+    tasks: &[&Message],
+    now_secs: u64,
+    retention_days: u64,
+    link: impl Fn(&Message) -> String,
+) -> Vec<String> {
     let mut chunks = Vec::new();
     let mut current = String::new();
     for task in tasks {
-        let line = format!("・{}<{}|{}>", priority_mark(task), link(task), label(task));
+        let line = format!(
+            "・{}<{}|{}>{}",
+            priority_mark(task),
+            link(task),
+            label(task),
+            remaining_mark(task, now_secs, retention_days)
+        );
         if !current.is_empty() && current.len() + line.len() + 1 > CHUNK_LIMIT {
             chunks.push(std::mem::take(&mut current));
         }
@@ -120,10 +158,7 @@ mod tests {
 
     #[test]
     fn formats_header_with_count() {
-        assert_eq!(
-            format_header(2),
-            "Todo: 2件"
-        );
+        assert_eq!(format_header(2), "Todo: 2件");
     }
 
     #[test]
@@ -133,10 +168,10 @@ mod tests {
             msg(r#"{"ts": "2", "text": "call <mom> & dad"}"#),
         ];
         let tasks = unfinished_tasks(&messages, "done");
-        let replies = format_thread_replies(&tasks, |m| format!("https://x/p{}", m.ts));
+        let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・<https://x/p1|buy milk>\n・<https://x/p2|call &lt;mom&gt; &amp; dad>"]
+            vec!["・<https://x/p1|buy milk>（あと90日）\n・<https://x/p2|call &lt;mom&gt; &amp; dad>（あと90日）"]
         );
     }
 
@@ -144,8 +179,8 @@ mod tests {
     fn labels_with_first_non_empty_line() {
         let messages = vec![msg(r#"{"ts": "1", "text": "\n  \nbuy milk\nmore"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
-        let replies = format_thread_replies(&tasks, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・<https://x|buy milk>"]);
+        let replies = format_thread_replies(&tasks, 1, 90, |_| "https://x".to_string());
+        assert_eq!(replies, vec!["・<https://x|buy milk>（あと90日）"]);
     }
 
     #[test]
@@ -154,7 +189,7 @@ mod tests {
             .map(|i| msg(&format!(r#"{{"ts": "{i}", "text": "task {i}"}}"#)))
             .collect();
         let tasks = unfinished_tasks(&messages, "done");
-        let replies = format_thread_replies(&tasks, |m| {
+        let replies = format_thread_replies(&tasks, 1, 90, |m| {
             format!("https://example.slack.com/archives/C1/p{}", m.ts)
         });
         assert!(replies.len() > 1);
@@ -197,10 +232,10 @@ mod tests {
     fn marks_priority_in_reply_line() {
         let messages = vec![with_reactions("1", &["three"]), with_reactions("2", &[])];
         let tasks = unfinished_tasks(&messages, "done");
-        let replies = format_thread_replies(&tasks, |m| format!("https://x/p{}", m.ts));
+        let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・【3】<https://x/p1|t1>\n・<https://x/p2|t2>"]
+            vec!["・【3】<https://x/p1|t1>（あと90日）\n・<https://x/p2|t2>（あと90日）"]
         );
     }
 
@@ -287,5 +322,56 @@ mod tests {
             r#"{"ts": "1", "text": "x", "subtype": "channel_join"}"#,
         )];
         assert!(unfinished_tasks(&messages, "done").is_empty());
+    }
+
+    #[test]
+    fn remaining_days_is_full_retention_when_just_posted() {
+        let m = msg(r#"{"ts": "1700000000.000100", "text": "x"}"#);
+        assert_eq!(remaining_days(&m, 1_700_000_000, 90), Some(90));
+        // 1 秒後も切り上げで 90 のまま。
+        assert_eq!(remaining_days(&m, 1_700_000_001, 90), Some(90));
+        // 丸 1 日後は 89。
+        assert_eq!(remaining_days(&m, 1_700_000_000 + 86_400, 90), Some(89));
+    }
+
+    #[test]
+    fn remaining_days_counts_down_to_zero_at_expiry() {
+        let m = msg(r#"{"ts": "1700000000.000100", "text": "x"}"#);
+        let day = 86_400;
+        assert_eq!(remaining_days(&m, 1_700_000_000 + 89 * day, 90), Some(1));
+        assert_eq!(
+            remaining_days(&m, 1_700_000_000 + 90 * day - 1, 90),
+            Some(1)
+        );
+        assert_eq!(remaining_days(&m, 1_700_000_000 + 90 * day, 90), Some(0));
+        assert_eq!(remaining_days(&m, 1_700_000_000 + 91 * day, 90), Some(0));
+    }
+
+    #[test]
+    fn remaining_days_never_exceeds_retention_for_future_ts() {
+        let m = msg(r#"{"ts": "1700000100.000100", "text": "x"}"#);
+        assert_eq!(remaining_days(&m, 1_700_000_000, 90), Some(90));
+    }
+
+    #[test]
+    fn remaining_days_honors_custom_retention() {
+        let m = msg(r#"{"ts": "1700000000.000100", "text": "x"}"#);
+        assert_eq!(remaining_days(&m, 1_700_000_000, 30), Some(30));
+    }
+
+    #[test]
+    fn remaining_days_is_none_for_unparseable_ts() {
+        let m = msg(r#"{"ts": "not-a-ts", "text": "x"}"#);
+        assert_eq!(remaining_days(&m, 1_700_000_000, 90), None);
+    }
+
+    #[test]
+    fn marks_expiring_today_in_reply_line() {
+        let messages = vec![msg(r#"{"ts": "1700000000.000100", "text": "buy milk"}"#)];
+        let tasks = unfinished_tasks(&messages, "done");
+        let replies = format_thread_replies(&tasks, 1_700_000_000 + 90 * 86_400, 90, |_| {
+            "https://x".to_string()
+        });
+        assert_eq!(replies, vec!["・<https://x|buy milk>（今日消えます）"]);
     }
 }
