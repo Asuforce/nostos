@@ -8,7 +8,7 @@ Todo が増えると未完了のものが上に流れて埋もれます。Nostos
 
 ```mermaid
 flowchart LR
-    A["Cron Trigger"] --> B["conversations.history<br/>直近 90 日の親メッセージ"]
+    A["Cron Trigger"] --> B["conversations.history<br/>保持日数分の親メッセージ"]
     B --> C{"未完了か<br/>完了リアクションなし / bot_id なし / subtype なし"}
     C -->|1 件以上| D["chat.postMessage<br/>親メッセージを投稿"] --> F["chat.postMessage<br/>スレッドにポストへのリンクを貼る"]
     C -->|0 件| E["何もしない"]
@@ -23,9 +23,11 @@ Todo: 2件
 スレッドには、該当ポストへのリンクが 1 行ずつ貼られます。リンクの表示名はポストの先頭 40 文字です。
 
 ```text
-・【3】牛乳を買う
-・電球を替える
+・【3】牛乳を買う（あと12日）
+・電球を替える（あと90日）
 ```
+
+各行の末尾には、その投稿が見えなくなるまでの残り日数を付けます。投稿時刻に保持日数を足したものが期限で、残りは日単位で切り上げます。期限当日は「（今日消えます）」と表示します。保持日数は `RETENTION_DAYS` で変えられ、既定は Slack 無料版の閲覧制限に合わせた 90 日です。履歴の取得範囲も同じ日数です。
 
 `bot_id` と `subtype` が付いた投稿は除外します。これがないと、Nostos 自身の投稿を次の朝に Todo として拾ってしまいます。
 
@@ -104,6 +106,7 @@ Wasm のビルドは `wrangler.toml` の `[build]` が `worker-build --release` 
 | `SLACK_BOT_TOKEN` | Bot User OAuth Token | `.dev.vars` / `wrangler secret` |
 | `SLACK_CHANNEL_ID` | 読み取りと投稿の対象にするチャンネルの ID。カンマ区切りで複数指定可（重複は無視） | `.dev.vars` / `wrangler secret` |
 | `DONE_REACTION` | 完了とみなすリアクション名（コロンなし）。省略すると `done` | `.dev.vars` / `wrangler secret` または `wrangler.toml` の `[vars]` |
+| `RETENTION_DAYS` | 投稿が見えなくなるまでの日数。残り日数の表示と履歴の取得範囲に使う。省略・不正値・0 の場合は `90` | `.dev.vars` / `wrangler secret` または `wrangler.toml` の `[vars]` |
 | `crons` | 実行時刻 (UTC) | `wrangler.toml` の `[triggers]` |
 
 実行時刻を変えるときは `crons` を編集します。JST は UTC より 9 時間進んでいます。
@@ -120,7 +123,7 @@ cargo clippy --target wasm32-unknown-unknown -- -D warnings
 ```text
 src/
 ├── lib.rs      scheduled イベントと全体の組み立て
-├── config.rs   SLACK_CHANNEL_ID の解析（カンマ区切りで複数チャンネル）
+├── config.rs   SLACK_CHANNEL_ID の解析（カンマ区切りで複数チャンネル）と保持日数の解析
 ├── slack.rs    API レスポンスの型、history 取得、投稿
 └── filter.rs   未完了判定とリマインド文の整形
 ```
@@ -130,7 +133,7 @@ Wasm 環境のため HTTP は `worker::Fetch` を使います。`reqwest` など
 ## 制限
 
 - 対象は親メッセージのみで、スレッド内の発言は拾いません。
-- 対象期間は過去 90 日です。Slack 無料版の履歴制限に合わせています。
+- 対象期間は過去 `RETENTION_DAYS` 日（既定 90 日）です。既定値は Slack 無料版の履歴制限に合わせています。
 
 ## ライセンス
 
