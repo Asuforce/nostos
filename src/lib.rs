@@ -13,6 +13,69 @@ async fn scheduled(_event: ScheduledEvent, env: Env, _ctx: ScheduleContext) {
     }
 }
 
+// HTTPは完了まで待機する。Cronとの切替前は検証のみ許可する。
+#[event(fetch)]
+async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+    let path = req.path();
+    if path != "/api/jobs/remind" && path != "/api/jobs/remind/validate" {
+        return Response::error("not found", 404);
+    }
+    if req.method() != Method::Post {
+        return Response::error("method not allowed", 405);
+    }
+    let expected = match env.secret("JOB_TOKEN") {
+        Ok(value) if !value.to_string().is_empty() => format!("Bearer {value}"),
+        _ => return Response::error("job authentication unavailable", 503),
+    };
+    let supplied = req.headers().get("Authorization")?.unwrap_or_default();
+    if !token_matches(supplied.as_bytes(), expected.as_bytes()) {
+        return Response::error("unauthorized", 401);
+    }
+    if path.ends_with("/validate") {
+        return Response::ok("validated; no Slack requests made");
+    }
+    if env
+        .var("HTTP_JOBS_ENABLED")
+        .map(|v| v.to_string())
+        .ok()
+        .as_deref()
+        != Some("true")
+    {
+        return Response::error("HTTP execution disabled until Cron cutover", 503);
+    }
+    match run(&env).await {
+        Ok(()) => Response::ok("completed"),
+        Err(_) => {
+            console_error!("nostos: HTTP job failed; inspect Slack before retry");
+            Response::error("job failed; manual inspection required", 500)
+        }
+    }
+}
+
+fn token_matches(supplied: &[u8], expected: &[u8]) -> bool {
+    if supplied.len() != expected.len() {
+        return false;
+    }
+    supplied
+        .iter()
+        .zip(expected)
+        .fold(0u8, |diff, (a, b)| diff | (a ^ b))
+        == 0
+}
+
+#[cfg(test)]
+mod http_tests {
+    use super::token_matches;
+
+    #[test]
+    fn rejects_missing_wrong_and_truncated_credentials() {
+        assert!(!token_matches(b"", b"Bearer secret"));
+        assert!(!token_matches(b"Bearer secreu", b"Bearer secret"));
+        assert!(!token_matches(b"Bearer secre", b"Bearer secret"));
+        assert!(token_matches(b"Bearer secret", b"Bearer secret"));
+    }
+}
+
 async fn run(env: &Env) -> Result<()> {
     let token = env.secret("SLACK_BOT_TOKEN")?.to_string();
     let channels = config::parse_channel_ids(&env.secret("SLACK_CHANNEL_ID")?.to_string());
@@ -43,9 +106,10 @@ async fn run(env: &Env) -> Result<()> {
     // ワークスペース URL は全チャンネルで共通なので、最初に必要になった時点で
     // 1 回だけ取得して使い回す。
     let mut workspace: Option<String> = None;
+    let mut failed = false;
     for channel in &channels {
         // 1 チャンネルの失敗（未招待・削除済みなど）で残りを止めない。
-        if let Err(e) = run_channel(
+        if let Err(_e) = run_channel(
             &token,
             channel,
             &done_reaction,
@@ -56,8 +120,12 @@ async fn run(env: &Env) -> Result<()> {
         )
         .await
         {
-            console_error!("nostos: channel {channel}: {e}");
+            failed = true;
+            console_error!("nostos: channel job failed");
         }
+    }
+    if failed {
+        return Err(Error::RustError("one or more channels failed".into()));
     }
     Ok(())
 }

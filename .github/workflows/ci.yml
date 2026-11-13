@@ -15,6 +15,8 @@ jobs:
           targets: wasm32-unknown-unknown
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - run: python3 -m unittest discover -s scripts -p "test_*.py"
+      - run: python3 scripts/check_deploy.py wrangler.toml.example
       - run: cargo test
       - run: cargo clippy --target wasm32-unknown-unknown -- -D warnings
 
@@ -36,6 +38,17 @@ jobs:
       - run: npm ci
       # wrangler.toml は .gitignore 対象なので example から作る
       - run: cp wrangler.toml.example wrangler.toml
+      - run: python3 scripts/check_deploy.py wrangler.toml
+      - name: Set job token
+        shell: bash
+        env:
+          NOSTOS_JOB_TOKEN: ${{ secrets.NOSTOS_JOB_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +x
+          test -n "$NOSTOS_JOB_TOKEN" || { echo "NOSTOS_JOB_TOKEN is required"; exit 1; }
+          printf '%s' "$NOSTOS_JOB_TOKEN" | npx wrangler secret put JOB_TOKEN > /dev/null 2>&1
       - run: npm run deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
