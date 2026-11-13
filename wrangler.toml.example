@@ -5,7 +5,10 @@ compatibility_date = "2025-01-01"
 [build]
 command = "cargo install -q --locked worker-build --version 0.8.0 && worker-build --release"
 
-# nsreach切替待ち。HTTP gateは既定OFFを維持。
+# HTTP起動へ切替。Cronとの同時有効化は禁止。
+[vars]
+HTTP_JOBS_ENABLED = "true"
+
 [triggers]
 crons = []
 
