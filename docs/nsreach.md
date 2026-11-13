@@ -7,7 +7,7 @@ Cron解除 → 本番登録0確認 → 旧Cron実行終了確認 → HTTP有効�
 DSM per-job lock → HTTP → 終了不明なら停止
 ```
 
-毎日09:00 Asia/Tokyo、job名remind。DSM IDは100〜106を避け実機確認後にinfraで確定する。既存Cronは維持する。
+毎日09:00 Asia/Tokyo、job名remind。DSM IDは100〜106を避け実機確認後にinfraで確定する。この段階ではCronを解除し、HTTP gateは既定OFFのまま維持する。
 
 `POST /api/jobs/remind` と `/api/jobs/remind/validate` は `Authorization: Bearer <JOB_TOKEN>` が必要。Worker secret `JOB_TOKEN` はCIから設定する。未設定503、誤認証401、GET405。validateはSlack通信なし。HTTP_JOBS_ENABLEDがtrueのときだけ通知を実行し、それ以外503。HTTPレスポンスに秘密やSlackエラーを含めない。
 
@@ -23,3 +23,12 @@ DSMはconnect timeout30秒、total1800秒、redirect禁止、自動retry禁止�
 
 
 追跡: https://github.com/Asuforce/infra/issues/79
+
+切替PRの順序（このPRは第1段階のみ、マージ禁止）:
+
+```text
+Cron解除のみ・HTTP OFF → CI配備後Cron0＋旧実行終了確認
+→ 後続PRでHTTP gate ON → 最後にinfra DSM107 enabled
+```
+
+受入run https://github.com/Asuforce/infra/actions/runs/43359533309 は単発確認時in_progress。DSM107 disabled、validate成功、NAS timezone、秘密非露出のログ証拠は未確定。証拠が揃うまで切替完了としない。部分投稿500・timeout後は実行終了とSlack照合まで再実行不可。自動retryは禁止。

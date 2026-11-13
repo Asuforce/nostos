@@ -1,3 +1,4 @@
+import tomllib
 import unittest
 import os
 from pathlib import Path
@@ -9,6 +10,12 @@ from check_deploy import check
 class DeployContract(unittest.TestCase):
     def test_cron_with_http_disabled(self):
         check({"triggers": {"crons": ["0 0 * * *"]}})
+
+    def test_cron_off_http_off_configuration(self):
+        config = tomllib.loads((Path(__file__).parents[1] / "wrangler.toml.example").read_text())
+        self.assertEqual(config["triggers"]["crons"], [])
+        self.assertNotEqual(str(config.get("vars", {}).get("HTTP_JOBS_ENABLED", "")).lower(), "true")
+        check(config)
 
     def test_http_after_cron_removal(self):
         check({"vars": {"HTTP_JOBS_ENABLED": "true"}, "triggers": {"crons": []}})

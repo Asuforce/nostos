@@ -5,9 +5,9 @@ compatibility_date = "2025-01-01"
 [build]
 command = "cargo install -q --locked worker-build --version 0.8.0 && worker-build --release"
 
-# UTC 0:00 = JST 9:00
+# nsreach切替待ち。HTTP gateは既定OFFを維持。
 [triggers]
-crons = ["0 0 * * *"]
+crons = []
 
 # 秘密情報はここに書かない。
 # 本番: wrangler secret put SLACK_BOT_TOKEN / SLACK_CHANNEL_ID
