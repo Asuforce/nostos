@@ -3,7 +3,7 @@
   "extends": ["config:best-practices"],
   "timezone": "Asia/Tokyo",
   "schedule": ["before 9am on monday"],
-  "automerge": false,
+  "automerge": true,
   "dependencyDashboard": { "enabled": true },
   "packageRules": [
     {
