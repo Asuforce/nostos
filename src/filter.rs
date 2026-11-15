@@ -56,6 +56,15 @@ pub fn remaining_days(message: &Message, now_secs: u64, retention_days: u64) -> 
     Some(remaining_secs.div_ceil(SECONDS_PER_DAY).min(retention_days))
 }
 
+// 手動指定と保持期限による優先度の高い方を使う。
+pub fn effective_priority(message: &Message, now_secs: u64, retention_days: u64) -> u8 {
+    let automatic = match remaining_days(message, now_secs, retention_days) {
+        Some(days @ 0..=50) => (1 + (50 - days) / 10).min(5) as u8,
+        _ => 0,
+    };
+    priority(message).max(automatic)
+}
+
 // JST の暦日番号。JST は UTC+9 で夏時間がないため、オフセットを足して日割りする。
 fn jst_day(secs: u64) -> u64 {
     (secs + 9 * 60 * 60) / SECONDS_PER_DAY
@@ -87,7 +96,7 @@ fn remaining_mark(message: &Message, now_secs: u64, retention_days: u64) -> Stri
     if jst_day(expiry_secs) == jst_day(now_secs) {
         "（今日まで）".to_string()
     } else {
-        format!("（あと{days}日）")
+        format!("（{days}日）")
     }
 }
 
@@ -99,10 +108,12 @@ pub fn format_thread_replies(
 ) -> Vec<String> {
     let mut chunks = Vec::new();
     let mut current = String::new();
+    let mut tasks = tasks.to_vec();
+    tasks.sort_by_key(|m| std::cmp::Reverse(effective_priority(m, now_secs, retention_days)));
     for task in tasks {
         let line = format!(
             "・{}<{}|{}>{}",
-            priority_mark(task),
+            priority_mark(task, now_secs, retention_days),
             link(task),
             label(task),
             remaining_mark(task, now_secs, retention_days)
@@ -121,11 +132,11 @@ pub fn format_thread_replies(
     chunks
 }
 
-// priority のある todo だけ行頭に【n】を付ける。
-fn priority_mark(message: &Message) -> String {
-    match priority(message) {
+// priority のある todo だけ行頭に :n: を付ける。
+fn priority_mark(message: &Message, now_secs: u64, retention_days: u64) -> String {
+    match effective_priority(message, now_secs, retention_days) {
         0 => String::new(),
-        n => format!("【{n}】"),
+        n => format!(":{n}:"),
     }
 }
 
@@ -197,7 +208,7 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・<https://x/p1|buy milk>（あと90日）\n・<https://x/p2|call &lt;mom&gt; &amp; dad>（あと90日）"]
+            vec!["・<https://x/p1|buy milk>（90日）\n・<https://x/p2|call &lt;mom&gt; &amp; dad>（90日）"]
         );
     }
 
@@ -206,7 +217,7 @@ mod tests {
         let messages = vec![msg(r#"{"ts": "1", "text": "\n  \nbuy milk\nmore"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・<https://x|buy milk>（あと90日）"]);
+        assert_eq!(replies, vec!["・<https://x|buy milk>（90日）"]);
     }
 
     #[test]
@@ -261,7 +272,7 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・【3】<https://x/p1|t1>（あと90日）\n・<https://x/p2|t2>（あと90日）"]
+            vec!["・:3:<https://x/p1|t1>（90日）\n・<https://x/p2|t2>（90日）"]
         );
     }
 
@@ -351,6 +362,26 @@ mod tests {
     }
 
     #[test]
+    fn raises_priority_at_ten_day_boundaries() {
+        let m = with_reactions("1700000000", &[]);
+        for (days, expected) in [
+            (51, 0),
+            (50, 1),
+            (41, 1),
+            (40, 2),
+            (30, 3),
+            (20, 4),
+            (10, 5),
+            (0, 5),
+        ] {
+            let now = 1_700_000_000 + (90 - days) * SECONDS_PER_DAY;
+            assert_eq!(effective_priority(&m, now, 90), expected, "{days}");
+        }
+        let manual = with_reactions("1700000000", &["five"]);
+        assert_eq!(effective_priority(&manual, 1_700_000_000, 90), 5);
+    }
+
+    #[test]
     fn remaining_days_is_full_retention_when_just_posted() {
         let m = msg(r#"{"ts": "1700000000.000100", "text": "x"}"#);
         assert_eq!(remaining_days(&m, 1_700_000_000, 90), Some(90));
@@ -398,7 +429,7 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1_700_000_000 + 90 * 86_400, 90, |_| {
             "https://x".to_string()
         });
-        assert_eq!(replies, vec!["・<https://x|buy milk>（今日まで）"]);
+        assert_eq!(replies, vec!["・:5:<https://x|buy milk>（今日まで）"]);
     }
 
     #[test]
@@ -408,16 +439,16 @@ mod tests {
         let messages = vec![msg(r#"{"ts": "1692349200.000100", "text": "buy milk"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・<https://x|buy milk>（今日まで）"]);
+        assert_eq!(replies, vec!["・:5:<https://x|buy milk>（今日まで）"]);
     }
 
     #[test]
     fn marks_one_day_left_when_expiring_tomorrow_jst() {
         // now は JST 09:00、期限は翌日 08:00 (JST)。残りは 23 時間で切り上げ
-        // 1 日、暦日も翌日なので「あと1日」になる。
+        // 1 日、暦日も翌日なので「1日」になる。
         let messages = vec![msg(r#"{"ts": "1692399600.000100", "text": "buy milk"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・<https://x|buy milk>（あと1日）"]);
+        assert_eq!(replies, vec!["・:5:<https://x|buy milk>（1日）"]);
     }
 }
