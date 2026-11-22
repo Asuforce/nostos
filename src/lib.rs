@@ -143,20 +143,33 @@ async fn run_channel(
     let tasks = filter::unfinished_tasks(&messages, done_reaction);
 
     let prev_reminder = filter::find_previous_reminder(&messages, now_secs);
-    let prev_unfinished_ids = match prev_reminder {
-        Some(prev) => {
-            let replies = slack::fetch_replies(token, channel, &prev.ts).await?;
-            filter::extract_linked_ts_ids(&replies, &prev.ts, channel)
-        }
-        None => std::collections::HashSet::new(),
+    // 完了リストは補助情報のため、前回スレッド取得に失敗しても未完了の本通知は継続する。
+    let completed = match prev_reminder {
+        Some(prev) => match slack::fetch_replies(token, channel, &prev.ts).await {
+            Ok(replies) => {
+                let prev_unfinished_ids =
+                    filter::extract_linked_ts_ids(&replies, &prev.ts, channel);
+                filter::completed_since_previous(
+                    &messages,
+                    done_reaction,
+                    Some(&prev.ts),
+                    &prev_unfinished_ids,
+                    now_secs,
+                )
+            }
+            Err(_) => {
+                console_error!("nostos: fetch_replies failed; continuing without completed list");
+                Vec::new()
+            }
+        },
+        None => filter::completed_since_previous(
+            &messages,
+            done_reaction,
+            None,
+            &std::collections::HashSet::new(),
+            now_secs,
+        ),
     };
-    let completed = filter::completed_since_previous(
-        &messages,
-        done_reaction,
-        prev_reminder.map(|m| m.ts.as_str()),
-        &prev_unfinished_ids,
-        now_secs,
-    );
 
     if tasks.is_empty() && completed.is_empty() {
         return Ok(());
@@ -169,6 +182,7 @@ async fn run_channel(
         return Err(Error::RustError("workspace URL is not set".to_string()));
     };
 
+    // 親投稿の後に返信を逐次投稿する設計のため、未完了返信の途中失敗時はリトライでの重複を許容する。
     let parent_ts = slack::post_message(
         token,
         channel,
@@ -184,11 +198,15 @@ async fn run_channel(
         slack::post_message(token, channel, &reply, Some(&parent_ts)).await?;
     }
 
+    // 完了リストの投稿失敗でチャンネル全体を失敗させると、リトライ時に本通知が重複するためログに留める。
     let completed_replies = filter::format_completed_replies(&completed, |m| {
         slack::permalink(workspace_url, channel, &m.ts)
     });
     for reply in completed_replies {
-        slack::post_message(token, channel, &reply, Some(&parent_ts)).await?;
+        if let Err(_e) = slack::post_message(token, channel, &reply, Some(&parent_ts)).await {
+            console_error!("nostos: failed to post completed replies");
+            break;
+        }
     }
     Ok(())
 }

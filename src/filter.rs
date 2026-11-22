@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::slack::Message;
 
-const COMPLETED_HEADER: &str = "昨日完了:";
+const COMPLETED_HEADER: &str = "前回以降の完了:";
 
 pub fn unfinished_tasks<'a>(messages: &'a [Message], done_reaction: &str) -> Vec<&'a Message> {
     // ":done:" と書かれても動くよう、前後のコロンは取り除く。
@@ -38,7 +38,7 @@ pub fn format_header(unfinished_count: usize, completed_count: usize) -> String 
     if completed_count == 0 {
         format!("Todo: {unfinished_count}件")
     } else {
-        format!("Todo: {unfinished_count}件（昨日完了: {completed_count}件）")
+        format!("Todo: {unfinished_count}件（前回以降の完了: {completed_count}件）")
     }
 }
 
@@ -206,7 +206,7 @@ pub fn extract_linked_ts_ids(
         let Some(text) = reply.text.as_deref() else {
             continue;
         };
-        if text.starts_with(COMPLETED_HEADER) {
+        if text.starts_with(COMPLETED_HEADER) || text.starts_with("昨日完了:") {
             continue;
         }
         let mut rest = text;
@@ -325,8 +325,8 @@ mod tests {
     #[test]
     fn formats_header_with_count() {
         assert_eq!(format_header(2, 0), "Todo: 2件");
-        assert_eq!(format_header(2, 3), "Todo: 2件（昨日完了: 3件）");
-        assert_eq!(format_header(0, 1), "Todo: 0件（昨日完了: 1件）");
+        assert_eq!(format_header(2, 3), "Todo: 2件（前回以降の完了: 3件）");
+        assert_eq!(format_header(0, 1), "Todo: 0件（前回以降の完了: 1件）");
     }
 
     #[test]
@@ -622,13 +622,13 @@ mod tests {
     fn extracts_linked_ts_ids_excluding_parent_and_completed_section() {
         let replies = vec![
             msg(
-                r#"{"ts": "1700006400.000100", "text": "Todo: 2件（昨日完了: 1件）", "bot_id": "B1"}"#,
+                r#"{"ts": "1700006400.000100", "text": "Todo: 2件（前回以降の完了: 1件）", "bot_id": "B1"}"#,
             ),
             msg(
                 r#"{"ts": "1700006401.000100", "text": "・ :three: <https://example.slack.com/archives/C123/p1699900000000100|old task>（80日）\n・<https://example.slack.com/archives/C123/p1699950000000200|task 2>（89日）", "bot_id": "B1"}"#,
             ),
             msg(
-                r#"{"ts": "1700006402.000100", "text": "昨日完了:\n・<https://example.slack.com/archives/C123/p1699800000000300|done yesterday>", "bot_id": "B1"}"#,
+                r#"{"ts": "1700006402.000100", "text": "前回以降の完了:\n・<https://example.slack.com/archives/C123/p1699800000000300|done yesterday>", "bot_id": "B1"}"#,
             ),
         ];
         let ids = extract_linked_ts_ids(&replies, "1700006400.000100", "C123");
@@ -701,6 +701,6 @@ mod tests {
         });
         assert!(replies.len() > 1);
         assert!(replies.iter().all(|r| r.len() <= CHUNK_LIMIT));
-        assert!(replies.iter().all(|r| r.starts_with("昨日完了:\n")));
+        assert!(replies.iter().all(|r| r.starts_with("前回以降の完了:\n")));
     }
 }
