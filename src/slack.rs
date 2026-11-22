@@ -64,17 +64,22 @@ fn auth_headers(token: &str) -> Result<Headers> {
     Ok(headers)
 }
 
-// oldest は Unix 秒。これより新しい親メッセージを全ページ分集める。
-pub async fn fetch_history(token: &str, channel: &str, oldest: u64) -> Result<Vec<Message>> {
+// ページネーション付きでメッセージ一覧を取得する共通ヘルパー。
+async fn fetch_paginated_messages(
+    token: &str,
+    endpoint: &str,
+    extra_params: &[(&str, &str)],
+) -> Result<Vec<Message>> {
     let mut messages = Vec::new();
     let mut cursor: Option<String> = None;
 
     loop {
-        let mut url = Url::parse(&format!("{API_BASE}/conversations.history"))?;
+        let mut url = Url::parse(&format!("{API_BASE}/{endpoint}"))?;
         {
             let mut q = url.query_pairs_mut();
-            q.append_pair("channel", channel);
-            q.append_pair("oldest", &oldest.to_string());
+            for (k, v) in extra_params {
+                q.append_pair(k, v);
+            }
             q.append_pair("limit", PAGE_LIMIT);
             if let Some(c) = &cursor {
                 q.append_pair("cursor", c);
@@ -89,7 +94,7 @@ pub async fn fetch_history(token: &str, channel: &str, oldest: u64) -> Result<Ve
 
         if !res.ok {
             return Err(Error::RustError(format!(
-                "conversations.history failed: {}",
+                "{endpoint} failed: {}",
                 res.error.unwrap_or_default()
             )));
         }
@@ -103,6 +108,27 @@ pub async fn fetch_history(token: &str, channel: &str, oldest: u64) -> Result<Ve
             return Ok(messages);
         }
     }
+}
+
+// oldest は Unix 秒。これより新しい親メッセージを全ページ分集める。
+pub async fn fetch_history(token: &str, channel: &str, oldest: u64) -> Result<Vec<Message>> {
+    let oldest_str = oldest.to_string();
+    fetch_paginated_messages(
+        token,
+        "conversations.history",
+        &[("channel", channel), ("oldest", &oldest_str)],
+    )
+    .await
+}
+
+// 指定スレッド内の返信メッセージを全ページ分集める（親メッセージ自身も含まれる）。
+pub async fn fetch_replies(token: &str, channel: &str, thread_ts: &str) -> Result<Vec<Message>> {
+    fetch_paginated_messages(
+        token,
+        "conversations.replies",
+        &[("channel", channel), ("ts", thread_ts)],
+    )
+    .await
 }
 
 // 投稿したメッセージの ts を返す。スレッド返信の親に使う。
