@@ -154,7 +154,7 @@ pub fn format_thread_replies(
         .iter()
         .map(|task| {
             format!(
-                "・{}<{}|{}>{}",
+                "{}<{}|{}>{}",
                 priority_mark(task, now_secs, retention_days),
                 link(task),
                 label(task),
@@ -171,7 +171,7 @@ pub fn format_completed_replies(
 ) -> Vec<String> {
     let lines: Vec<String> = tasks
         .iter()
-        .map(|task| format!("・<{}|{}>", link(task), label(task)))
+        .map(|task| format!("<{}|{}>", link(task), label(task)))
         .collect();
     chunk_lines(&lines, Some(COMPLETED_HEADER))
 }
@@ -251,14 +251,14 @@ pub fn completed_since_previous<'a>(
         .collect()
 }
 
-// priority のある todo だけ行頭に前後を半角スペースで区切った絵文字を付ける（5 は :fire:）。
+// priority のある todo だけ行頭に末尾を半角スペースで区切った絵文字を付ける（5 は :fire:）。
 fn priority_mark(message: &Message, now_secs: u64, retention_days: u64) -> String {
     match effective_priority(message, now_secs, retention_days) {
-        1 => " :one: ".to_string(),
-        2 => " :two: ".to_string(),
-        3 => " :three: ".to_string(),
-        4 => " :four: ".to_string(),
-        5 => " :fire: ".to_string(),
+        1 => ":one: ".to_string(),
+        2 => ":two: ".to_string(),
+        3 => ":three: ".to_string(),
+        4 => ":four: ".to_string(),
+        5 => ":fire: ".to_string(),
         _ => String::new(),
     }
 }
@@ -339,7 +339,7 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・<https://x/p1|buy milk>（90日）\n・<https://x/p2|call &lt;mom&gt; &amp; dad>（90日）"]
+            vec!["<https://x/p1|buy milk>（90日）\n<https://x/p2|call &lt;mom&gt; &amp; dad>（90日）"]
         );
     }
 
@@ -348,7 +348,7 @@ mod tests {
         let messages = vec![msg(r#"{"ts": "1", "text": "\n  \nbuy milk\nmore"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・<https://x|buy milk>（90日）"]);
+        assert_eq!(replies, vec!["<https://x|buy milk>（90日）"]);
     }
 
     #[test]
@@ -403,12 +403,12 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1, 90, |m| format!("https://x/p{}", m.ts));
         assert_eq!(
             replies,
-            vec!["・ :three: <https://x/p1|t1>（90日）\n・<https://x/p2|t2>（90日）"]
+            vec![":three: <https://x/p1|t1>（90日）\n<https://x/p2|t2>（90日）"]
         );
     }
 
     #[test]
-    fn surrounds_all_priority_stamps_with_spaces() {
+    fn adds_trailing_space_to_all_priority_stamps() {
         for (n, name) in [
             (1, "one"),
             (2, "two"),
@@ -418,7 +418,7 @@ mod tests {
         ] {
             let message = with_reactions("1", &[&n.to_string()]);
             let replies = format_thread_replies(&[&message], 1, 90, |_| "https://x".to_string());
-            assert_eq!(replies, vec![format!("・ :{name}: <https://x|t1>（90日）")]);
+            assert_eq!(replies, vec![format!(":{name}: <https://x|t1>（90日）")]);
         }
         assert_eq!(priority_mark(&with_reactions("1", &[]), 1, 90), "");
     }
@@ -576,7 +576,7 @@ mod tests {
         let replies = format_thread_replies(&tasks, 1_700_000_000 + 90 * 86_400, 90, |_| {
             "https://x".to_string()
         });
-        assert_eq!(replies, vec!["・ :fire: <https://x|buy milk>（今日まで）"]);
+        assert_eq!(replies, vec![":fire: <https://x|buy milk>（今日まで）"]);
     }
 
     #[test]
@@ -586,7 +586,7 @@ mod tests {
         let messages = vec![msg(r#"{"ts": "1692349200.000100", "text": "buy milk"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・ :fire: <https://x|buy milk>（今日まで）"]);
+        assert_eq!(replies, vec![":fire: <https://x|buy milk>（今日まで）"]);
     }
 
     #[test]
@@ -596,7 +596,7 @@ mod tests {
         let messages = vec![msg(r#"{"ts": "1692399600.000100", "text": "buy milk"}"#)];
         let tasks = unfinished_tasks(&messages, "done");
         let replies = format_thread_replies(&tasks, 1_700_092_800, 90, |_| "https://x".to_string());
-        assert_eq!(replies, vec!["・ :fire: <https://x|buy milk>（1日）"]);
+        assert_eq!(replies, vec![":fire: <https://x|buy milk>（1日）"]);
     }
 
     #[test]
@@ -625,10 +625,10 @@ mod tests {
                 r#"{"ts": "1700006400.000100", "text": "Todo: 2件（前回以降の完了: 1件）", "bot_id": "B1"}"#,
             ),
             msg(
-                r#"{"ts": "1700006401.000100", "text": "・ :three: <https://example.slack.com/archives/C123/p1699900000000100|old task>（80日）\n・<https://example.slack.com/archives/C123/p1699950000000200|task 2>（89日）", "bot_id": "B1"}"#,
+                r#"{"ts": "1700006401.000100", "text": ":three: <https://example.slack.com/archives/C123/p1699900000000100|old task>（80日）\n<https://example.slack.com/archives/C123/p1699950000000200|task 2>（89日）", "bot_id": "B1"}"#,
             ),
             msg(
-                r#"{"ts": "1700006402.000100", "text": "前回以降の完了:\n・<https://example.slack.com/archives/C123/p1699800000000300|done yesterday>", "bot_id": "B1"}"#,
+                r#"{"ts": "1700006402.000100", "text": "前回以降の完了:\n<https://example.slack.com/archives/C123/p1699800000000300|done yesterday>", "bot_id": "B1"}"#,
             ),
         ];
         let ids = extract_linked_ts_ids(&replies, "1700006400.000100", "C123");
@@ -701,6 +701,6 @@ mod tests {
         });
         assert!(replies.len() > 1);
         assert!(replies.iter().all(|r| r.len() <= CHUNK_LIMIT));
-        assert!(replies.iter().all(|r| r.starts_with("前回以降の完了:\n")));
+        assert!(replies.iter().all(|r| r.starts_with("前回以降の完了:\n<")));
     }
 }
